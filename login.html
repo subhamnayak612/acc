@@ -1,0 +1,31 @@
+<form id="loginForm">
+  <input type="text" id="username" placeholder="Username"><br><br>
+  <input type="password" id="password" placeholder="Password"><br><br>
+  <button type="submit">Login</button>
+  <p id="msg"></p>
+</form>
+
+<script>
+const form = document.getElementById("loginForm");
+const msg = document.getElementById("msg");
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  if (username === "" || password === "") {
+    msg.textContent = "All fields are required!";
+    msg.style.color = "red";
+  } 
+  else if (password.length < 6) {
+    msg.textContent = "Password must be at least 6 characters.";
+    msg.style.color = "orange";
+  } 
+  else {
+    msg.textContent = "Login Successful ✅";
+    msg.style.color = "green";
+  }
+});
+</script>

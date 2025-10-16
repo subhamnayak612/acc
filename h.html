@@ -1,0 +1,356 @@
+/**
+ * AI Mental Health Prototype (single-file React component)
+ * - TailwindCSS utility classes are used for styling (no external CSS file required here)
+ * - This is a UI prototype intended to run inside a standard React app (Vite / Create React App)
+ * - Save as `App.jsx` and ensure Tailwind is configured in the project
+ *
+ * Features included:
+ * - Landing / overview
+ * - Simulated AI chat (frontline assistant) with stress detection mock
+ * - Quick Yoga session module with steps
+ * - Doctor directory and mock booking (psychologist / psychiatrist)
+ * - Simple doctor dashboard view (mock)
+ * - State is local (no backend). Replace mock functions with real APIs later.
+ *
+ * How to run:
+ * 1. Create a React + Tailwind project (Vite or CRA + Tailwind) if you don't have one
+ * 2. Replace src/App.jsx with this file
+ * 3. npm run dev / npm start
+ *
+ * Note: This is a prototype for demo and UX exploration only.
+ */
+
+import React, { useState, useEffect, useRef } from "react";
+
+// Mock assets (emoji / SVG inline where helpful)
+const RobotEmoji = () => (
+  <span role="img" aria-label="robot" className="text-2xl">🤖</span>
+);
+const YogaEmoji = () => (
+  <span role="img" aria-label="yoga" className="text-2xl">🧘‍♀️</span>
+);
+
+// Mock doctors
+const MOCK_DOCTORS = [
+  { id: 1, name: "Dr. Anjali Sharma", type: "Psychologist", yrs: 8, languages: ["English", "Hindi"] },
+  { id: 2, name: "Dr. Rakesh Varma", type: "Psychiatrist", yrs: 12, languages: ["English"] },
+  { id: 3, name: "Dr. Meera Patel", type: "Psychologist", yrs: 5, languages: ["English", "Odia"] },
+];
+
+// Simple stress classifier (mock): checks presence of keywords
+function detectStressFromText(text) {
+  const low = ["ok", "fine", "good"];
+  const medium = ["stressed", "anxious", "worried", "tired"];
+  const high = ["suicidal", "hurt", "help me", "can't", "overwhelmed"];
+  const t = text.toLowerCase();
+  if (high.some((w) => t.includes(w))) return "high";
+  if (medium.some((w) => t.includes(w))) return "medium";
+  if (low.some((w) => t.includes(w))) return "low";
+  return "unknown";
+}
+
+// Simple mock AI reply generator
+function mockAIReply(userText) {
+  const level = detectStressFromText(userText);
+  if (level === "high") {
+    return {
+      text: "I hear you — this sounds serious. If you have thoughts of hurting yourself, please contact emergency help now. I can connect you to a psychiatrist immediately or call an emergency number.",
+      action: "escalate",
+      level,
+    };
+  }
+  if (level === "medium") {
+    return {
+      text: "I understand. Let's try a 2-minute breathing exercise (Anulom Vilom). Would you like to start? I can also suggest a 10-minute yoga flow.",
+      action: "coach",
+      level,
+    };
+  }
+  if (level === "low") {
+    return {
+      text: "I'm glad you're feeling okay. If you ever feel stressed, I'm here. Want a short mindfulness exercise?",
+      action: "suggest",
+      level,
+    };
+  }
+  return { text: "Tell me more — how are you feeling right now?", action: "ask", level };
+}
+
+// Simple Yoga sequences
+const YOGA_SEQUENCES = [
+  {
+    id: "y10",
+    title: "10-minute Stress-Release Flow",
+    duration: "10 mins",
+    steps: [
+      { id: 1, title: "Deep Belly Breathing (2 mins)", desc: "Sit comfortably and breathe long & slow." },
+      { id: 2, title: "Cat-Cow (2 mins)", desc: "On all fours, alternate arching and rounding the spine." },
+      { id: 3, title: "Child's Pose (2 mins)", desc: "Kneel and fold forward, arms extended." },
+      { id: 4, title: "Legs-up-the-wall (2 mins)", desc: "Lie down and rest legs against a wall." },
+      { id: 5, title: "Shavasana (2 mins)", desc: "Relax full body — deep rest." },
+    ],
+  },
+  {
+    id: "y5",
+    title: "5-minute Quick Calm",
+    duration: "5 mins",
+    steps: [
+      { id: 1, title: "Box Breathing (1 min)", desc: "Inhale 4s, hold 4s, exhale 4s, hold 4s." },
+      { id: 2, title: "Neck Rolls (1 min)", desc: "Gentle neck rotations to release tension." },
+      { id: 3, title: "Seated Forward Fold (1 min)", desc: "Hinge from hips and relax." },
+      { id: 4, title: "Shavasana (2 min)", desc: "Short relaxation." },
+    ],
+  },
+];
+
+export default function App() {
+  const [route, setRoute] = useState("home");
+  const [chatMessages, setChatMessages] = useState([
+    { from: "ai", text: "Hi, I'm Aro — your AI stress companion. How are you feeling today?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [selectedYoga, setSelectedYoga] = useState(YOGA_SEQUENCES[0]);
+  const [booked, setBooked] = useState([]);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [profile, setProfile] = useState({ name: "", age: "", language: "English" });
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  function sendMessage() {
+    if (!input.trim()) return;
+    const userMsg = { from: "user", text: input };
+    setChatMessages((c) => [...c, userMsg]);
+    const reply = mockAIReply(input);
+    // small delay to simulate typing
+    setTimeout(() => {
+      setChatMessages((c) => [...c, { from: "ai", text: reply.text }]);
+      // if escalation recommended, show doctor connect
+      if (reply.action === "escalate") {
+        setRoute("doctors");
+      }
+    }, 700);
+    setInput("");
+  }
+
+  function quickStartYoga(seqId) {
+    const seq = YOGA_SEQUENCES.find((s) => s.id === seqId);
+    setSelectedYoga(seq);
+    setRoute("yoga");
+  }
+
+  function bookDoctor(doctor) {
+    const booking = { id: Date.now(), doctor, time: "ASAP", status: "pending" };
+    setBooked((b) => [booking, ...b]);
+    setSelectedDoctor(doctor);
+    setRoute("booked");
+  }
+
+  // tiny UI components below
+  const Header = () => (
+    <header className="flex items-center justify-between p-4 bg-gradient-to-r from-sky-500 to-indigo-600 text-white">
+      <div className="flex items-center gap-3">
+        <RobotEmoji />
+        <div>
+          <div className="font-bold text-lg">Aro — AI Mental Health</div>
+          <div className="text-sm opacity-80">Companion • Yoga Coach • Doctor Bridge</div>
+        </div>
+      </div>
+      <nav className="flex gap-3">
+        <button className="px-3 py-1 rounded hover:bg-sky-600" onClick={() => setRoute("home")}>Home</button>
+        <button className="px-3 py-1 rounded hover:bg-sky-600" onClick={() => setRoute("chat")}>Chat</button>
+        <button className="px-3 py-1 rounded hover:bg-sky-600" onClick={() => setRoute("yoga")}>Yoga</button>
+        <button className="px-3 py-1 rounded hover:bg-sky-600" onClick={() => setRoute("doctors")}>Doctors</button>
+        <button className="px-3 py-1 rounded hover:bg-sky-600" onClick={() => setRoute("dashboard")}>Doctor Dashboard</button>
+      </nav>
+    </header>
+  );
+
+  const Home = () => (
+    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="md:col-span-2 bg-white p-6 rounded-lg shadow">
+        <h2 className="text-2xl font-bold mb-2">Why this app?</h2>
+        <p className="mb-4 text-gray-700">We combine AI frontline support, quick yoga coaching for stress, and direct access to psychologists and psychiatrists when needed.</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 border rounded">
+            <h3 className="font-semibold">Instant Help</h3>
+            <p className="text-sm text-gray-600">AI listens & suggests breathing or yoga in seconds.</p>
+          </div>
+          <div className="p-4 border rounded">
+            <h3 className="font-semibold">Doctor Bridge</h3>
+            <p className="text-sm text-gray-600">Connect instantly to professionals for deeper support.</p>
+          </div>
+          <div className="p-4 border rounded">
+            <h3 className="font-semibold">Safety First</h3>
+            <p className="text-sm text-gray-600">Escalation protocols if high-risk phrases are detected.</p>
+          </div>
+          <div className="p-4 border rounded">
+            <h3 className="font-semibold">Personalized</h3>
+            <p className="text-sm text-gray-600">Track mood & tailor yoga sessions based on need.</p>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="font-semibold mb-2">Quick Actions</h3>
+          <div className="flex gap-3">
+            <button onClick={() => setRoute("chat")} className="px-4 py-2 bg-sky-500 text-white rounded">Talk to AI</button>
+            <button onClick={() => quickStartYoga("y5")} className="px-4 py-2 bg-green-500 text-white rounded">Start 5-min Yoga</button>
+            <button onClick={() => setRoute("doctors")} className="px-4 py-2 bg-indigo-600 text-white rounded">Find Doctors</button>
+          </div>
+        </div>
+      </div>
+
+      <aside className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-semibold mb-2">Today's Tip</h3>
+        <p className="text-sm text-gray-700">If you feel overwhelmed, pause for 60 seconds and focus on counting deep breaths. Try 4 in, 4 hold, 4 out.</p>
+        <div className="mt-4">
+          <h4 className="font-semibold">Recommended Session</h4>
+          <div className="mt-2 p-2 border rounded">
+            <div className="font-semibold">{YOGA_SEQUENCES[0].title}</div>
+            <div className="text-xs text-gray-500">{YOGA_SEQUENCES[0].duration}</div>
+            <button onClick={() => quickStartYoga(YOGA_SEQUENCES[0].id)} className="mt-2 px-3 py-1 bg-green-600 text-white rounded text-sm">Start</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+
+  const Chat = () => (
+    <div className="p-6 flex flex-col h-[70vh]">
+      <div className="flex-1 overflow-auto p-4 bg-gray-50 rounded">
+        {chatMessages.map((m, idx) => (
+          <div key={idx} className={`mb-3 flex ${m.from === "ai" ? "justify-start" : "justify-end"}`}>
+            <div className={`${m.from === "ai" ? "bg-white text-gray-800" : "bg-sky-500 text-white"} p-3 rounded-lg max-w-[75%]`}>{m.text}</div>
+          </div>
+        ))}
+        <div ref={chatEndRef} />
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type how you feel..." className="flex-1 p-2 border rounded" />
+        <button onClick={sendMessage} className="px-4 py-2 bg-indigo-600 text-white rounded">Send</button>
+      </div>
+    </div>
+  );
+
+  const Yoga = () => (
+    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="md:col-span-2 bg-white rounded p-6 shadow">
+        <h2 className="text-2xl font-bold mb-2">{selectedYoga.title}</h2>
+        <p className="text-sm text-gray-600 mb-4">Duration: {selectedYoga.duration}</p>
+
+        <div className="space-y-4">
+          {selectedYoga.steps.map((s) => (
+            <div key={s.id} className="p-4 border rounded flex items-start gap-3">
+              <div className="text-xl">{YogaEmoji()}</div>
+              <div>
+                <div className="font-semibold">{s.title}</div>
+                <div className="text-sm text-gray-600">{s.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <button onClick={() => alert('Starting guided session (mock) — imagine audio + timer here')} className="px-4 py-2 bg-green-600 text-white rounded">Start Guided</button>
+          <button onClick={() => setRoute('home')} className="px-4 py-2 border rounded">Back</button>
+        </div>
+      </div>
+
+      <aside className="bg-white p-4 rounded shadow">
+        <h4 className="font-semibold mb-2">Yoga Library</h4>
+        {YOGA_SEQUENCES.map((y) => (
+          <div key={y.id} className="mb-2 p-2 border rounded flex justify-between items-center">
+            <div>
+              <div className="font-medium">{y.title}</div>
+              <div className="text-xs text-gray-500">{y.duration}</div>
+            </div>
+            <button onClick={() => setSelectedYoga(y)} className="px-3 py-1 bg-sky-500 text-white rounded">Open</button>
+          </div>
+        ))}
+      </aside>
+    </div>
+  );
+
+  const Doctors = () => (
+    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="md:col-span-2 bg-white p-6 rounded shadow">
+        <h2 className="text-2xl font-bold mb-4">Available Doctors</h2>
+        <div className="space-y-3">
+          {MOCK_DOCTORS.map((d) => (
+            <div key={d.id} className="p-3 border rounded flex justify-between items-center">
+              <div>
+                <div className="font-semibold">{d.name} <span className="text-xs text-gray-500">({d.type})</span></div>
+                <div className="text-xs text-gray-500">{d.yrs} yrs • {d.languages.join(', ')}</div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => bookDoctor(d)} className="px-3 py-1 bg-indigo-600 text-white rounded">Book</button>
+                <button onClick={() => alert('Opening profile (mock)')} className="px-3 py-1 border rounded">Profile</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <aside className="bg-white p-4 rounded shadow">
+        <h4 className="font-semibold mb-2">Your Bookings</h4>
+        {booked.length === 0 && <div className="text-sm text-gray-500">No bookings yet</div>}
+        {booked.map((b) => (
+          <div key={b.id} className="p-2 border rounded mb-2">
+            <div className="font-medium">{b.doctor.name}</div>
+            <div className="text-xs text-gray-500">{b.time} • {b.status}</div>
+          </div>
+        ))}
+      </aside>
+    </div>
+  );
+
+  const Booked = () => (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold">Booking Confirmed</h2>
+      <p className="mt-2">You have a request to consult with <strong>{selectedDoctor?.name}</strong>. This is a mock booking — in a real app this would trigger a video call or calendar invite.</p>
+      <div className="mt-4">
+        <button onClick={() => setRoute('doctors')} className="px-4 py-2 bg-indigo-600 text-white rounded">Back to Doctors</button>
+      </div>
+    </div>
+  );
+
+  const DoctorDashboard = () => (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold">Doctor Dashboard (Mock)</h2>
+      <p className="text-sm text-gray-600">This view is what a clinician might see: patient summaries gathered by AI, recent escalations, and booking requests.</p>
+
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 bg-white rounded shadow">
+          <h4 className="font-semibold">Recent Escalations</h4>
+          <div className="mt-2 text-sm text-gray-700">No recent escalations in this mock. In production this would show high-risk cases flagged by AI.</div>
+        </div>
+        <div className="p-4 bg-white rounded shadow">
+          <h4 className="font-semibold">AI Patient Insights</h4>
+          <div className="mt-2 text-sm text-gray-700">Example: "User: Male, 22, elevated stress in last 2 weeks — recommends therapy evaluation."</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-white">
+      <Header />
+
+      <main className="max-w-6xl mx-auto mt-6">
+        {route === "home" && <Home />}
+        {route === "chat" && <Chat />}
+        {route === "yoga" && <Yoga />}
+        {route === "doctors" && <Doctors />}
+        {route === "booked" && <Booked />}
+        {route === "dashboard" && <DoctorDashboard />}
+
+        <footer className="p-6 text-center text-sm text-gray-500">
+          © {new Date().getFullYear()} Aro — AI Mental Health Prototype • For demo only
+        </footer>
+      </main>
+    </div>
+  );
+}
